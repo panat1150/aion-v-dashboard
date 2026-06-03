@@ -902,16 +902,22 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 [data-testid="collapsedControl"] { display: none !important; }
-section[data-testid="stSidebar"] > div:first-child { min-width: 260px !important; }
-section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { overflow-x: hidden !important; }
-section[data-testid="stSidebar"] { scrollbar-width: none !important; -ms-overflow-style: none !important; overflow-y: hidden !important; }
+section[data-testid="stSidebar"] { scrollbar-width: none !important; -ms-overflow-style: none !important; }
 section[data-testid="stSidebar"]::-webkit-scrollbar { display: none !important; }
-section[data-testid="stSidebar"] .block-container { padding-top: 0.5rem !important; }
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.2rem !important; }
-section[data-testid="stSidebar"] hr { margin: 0.3rem 0 !important; }
-section[data-testid="stSidebar"] .stButton { margin: 0 !important; }
-section[data-testid="stSidebar"] .stRadio { margin-top: 0 !important; }
-section[data-testid="stSidebar"] .stRadio label { font-size: 0.85rem !important; padding: 2px 0 !important; }
+section[data-testid="stSidebar"] > div:first-child {
+    min-width: 260px !important;
+    overflow: hidden !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 0.5rem !important;
+}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.15rem !important; }
+section[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] { padding: 0 !important; }
+section[data-testid="stSidebar"] hr { margin: 0.25rem 0 !important; }
+section[data-testid="stSidebar"] .stButton > button { padding: 4px 8px !important; font-size: 0.82rem !important; }
+section[data-testid="stSidebar"] .stRadio > div { gap: 0 !important; }
+section[data-testid="stSidebar"] .stRadio label { font-size: 0.85rem !important; padding: 3px 0 !important; line-height: 1.4 !important; }
+section[data-testid="stSidebar"] p { margin: 0 !important; }
+section[data-testid="stSidebar"] * { overflow-x: hidden !important; }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
 .stCaption, .stButton button, .stSelectbox, .stTextInput input,
@@ -928,7 +934,7 @@ with st.sidebar:
     _img_b64 = base64.b64encode(pathlib.Path("car.jpg").read_bytes()).decode()
     st.markdown(
         f'<img src="data:image/jpeg;base64,{_img_b64}" '
-        f'style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;pointer-events:none;user-select:none;display:block">',
+        f'style="width:100%;max-height:120px;object-fit:cover;object-position:center 40%;border-radius:10px;pointer-events:none;user-select:none;display:block">',
         unsafe_allow_html=True,
     )
     st.markdown(
