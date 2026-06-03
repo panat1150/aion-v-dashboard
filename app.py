@@ -904,6 +904,8 @@ st.markdown("""
 [data-testid="collapsedControl"] { display: none !important; }
 section[data-testid="stSidebar"] > div:first-child { min-width: 260px !important; }
 section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { overflow-x: hidden !important; }
+section[data-testid="stSidebar"] { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+section[data-testid="stSidebar"]::-webkit-scrollbar { display: none !important; }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
 .stCaption, .stButton button, .stSelectbox, .stTextInput input,
