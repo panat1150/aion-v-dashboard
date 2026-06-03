@@ -353,6 +353,42 @@ def page_dashboard():
     c3.metric("🛣 กม. ที่ขับแล้ว",       f"{k['total_km']:,}",
               f"พิสัยเฉลี่ย: {k['avg_range']:.0f} กม.")
 
+    # Lifetime stats strip
+    first_dt  = datetime.strptime(charges[0]["date"], "%Y-%m-%d").date()
+    days_owned = (date.today() - first_dt).days or 1
+    months, days_r = divmod(days_owned, 30)
+    yrs,    mo_r   = divmod(months, 12)
+    if yrs > 0:
+        dur_str = f"{yrs} ปี {mo_r} เดือน"
+    elif months > 0:
+        dur_str = f"{months} เดือน {days_r} วัน"
+    else:
+        dur_str = f"{days_owned} วัน"
+    avg_km_day  = round(k["total_km"]  / days_owned, 1)
+    avg_kwh_day = round(k["total_kwh"] / days_owned, 1)
+    avg_cost_day = round(k["total_cost"] / days_owned, 0)
+
+    def _stat(icon, value, label, color):
+        return f"""
+        <div style="flex:1;text-align:center;padding:14px 6px;border-right:1px solid #30363d;min-width:0">
+          <div style="font-size:1.25rem;font-weight:800;color:{color};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{icon} {value}</div>
+          <div style="font-size:0.62rem;color:#8b949e;text-transform:uppercase;letter-spacing:.06em;margin-top:4px">{label}</div>
+        </div>"""
+
+    strip = "".join([
+        _stat("🛣",  f"{k['total_km']:,} km",      "ระยะทางรวม",        "#58a6ff"),
+        _stat("⚡",  f"{k['total_kwh']:,.1f} kWh",  "kWh ใช้ไปทั้งหมด",  "#d29922"),
+        _stat("📅",  dur_str,                        "ใช้รถมาแล้ว",        "#8b949e"),
+        _stat("📍",  f"{avg_km_day} km/วัน",         "เฉลี่ยต่อวัน",       "#3fb950"),
+        _stat("🔌",  f"{avg_kwh_day} kWh/วัน",       "kWh เฉลี่ยต่อวัน",  "#bc8cff"),
+        _stat("💸",  f"฿{avg_cost_day:,.0f}/วัน",    "ต้นทุนเฉลี่ยต่อวัน", "#db6d28"),
+    ])
+    st.markdown(
+        f'<div style="display:flex;background:#161b22;border:1px solid #30363d;'
+        f'border-radius:12px;margin:12px 0 4px;overflow:hidden">{strip}</div>',
+        unsafe_allow_html=True,
+    )
+
     st.divider()
 
     # Battery + Charging KPIs
