@@ -903,6 +903,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 [data-testid="collapsedControl"] { display: none !important; }
 section[data-testid="stSidebar"] > div:first-child { min-width: 260px !important; }
+section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { overflow-x: hidden !important; }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
 .stCaption, .stButton button, .stSelectbox, .stTextInput input,
