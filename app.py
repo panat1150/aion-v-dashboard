@@ -901,9 +901,16 @@ check_password()
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-[data-testid="collapsedControl"] { display: none !important; pointer-events: none !important; }
+[data-testid="collapsedControl"],
 button[title="keyboard_double_arrow_right"],
-button[aria-label*="sidebar"] { display: none !important; pointer-events: none !important; }
+button[title*="arrow"],
+button[aria-label*="sidebar"],
+button[aria-label*="collapse"] {
+    position: fixed !important;
+    left: -9999px !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+}
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
 .stCaption, .stButton button, .stSelectbox, .stTextInput input,
