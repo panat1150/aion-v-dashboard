@@ -919,6 +919,34 @@ div, span, p, h1, h2, h3, h4, td, th {
     font-family: 'Inter', sans-serif !important;
 }
 </style>
+<script>
+(function removeSidebarBtn() {
+    const selectors = [
+        '[data-testid="collapsedControl"]',
+        '[data-testid="stSidebarCollapseButton"]',
+        'button[title*="arrow"]',
+        'button[title*="keyboard"]',
+        'button[title*="sidebar"]',
+        'button[title*="collapse"]',
+        'button[title*="Collapse"]',
+    ];
+    function tryRemove() {
+        selectors.forEach(sel => {
+            document.querySelectorAll(sel).forEach(el => {
+                el.style.display = 'none';
+                el.style.pointerEvents = 'none';
+                el.removeAttribute('title');
+            });
+        });
+        // also strip title from all sidebar buttons
+        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
+        if (sidebar) sidebar.querySelectorAll('button').forEach(btn => btn.removeAttribute('title'));
+    }
+    tryRemove();
+    const observer = new MutationObserver(tryRemove);
+    observer.observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 """, unsafe_allow_html=True)
 
 # ── Main ───────────────────────────────────────────────────────────────────────
