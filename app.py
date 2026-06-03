@@ -912,8 +912,15 @@ div, span, p, h1, h2, h3, h4, td, th {
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## ⚡ AION V")
-    st.caption("GAC AION V Intelligence Dashboard")
+    st.image("car.jpg", use_container_width=True)
+    st.markdown(
+        "<div style='text-align:center;margin:-8px 0 4px'>"
+        "<span style='font-size:1.1rem;font-weight:800;color:#58a6ff'>⚡ GAC AION V 602</span><br>"
+        "<span style='font-size:0.7rem;color:#8b949e;letter-spacing:.05em'>SAHARA SAND  |  6ขธ 8343</span>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    st.divider()
     if st.button("↻ Refresh Data", use_container_width=True):
         get_data.clear()
         st.rerun()

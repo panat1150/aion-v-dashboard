@@ -5,6 +5,8 @@ __pycache__/
 *.xlsx
 *.pdf
 *.docx
+*.jpg
+!car.jpg
 .streamlit/secrets.toml
 Drivvo/
 OBD Read/
