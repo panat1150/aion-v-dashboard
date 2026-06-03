@@ -912,7 +912,13 @@ div, span, p, h1, h2, h3, h4, td, th {
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.image("car.jpg", use_container_width=True)
+    import base64, pathlib
+    _img_b64 = base64.b64encode(pathlib.Path("car.jpg").read_bytes()).decode()
+    st.markdown(
+        f'<img src="data:image/jpeg;base64,{_img_b64}" '
+        f'style="width:100%;border-radius:10px;pointer-events:none;user-select:none">',
+        unsafe_allow_html=True,
+    )
     st.markdown(
         "<div style='text-align:center;margin:-8px 0 4px'>"
         "<span style='font-size:1.1rem;font-weight:800;color:#58a6ff'>⚡ GAC AION V 602</span><br>"
