@@ -1,0 +1,11 @@
+.auth.json
+.env
+__pycache__/
+*.pyc
+*.xlsx
+*.pdf
+*.docx
+.streamlit/secrets.toml
+Drivvo/
+OBD Read/
+Document/
