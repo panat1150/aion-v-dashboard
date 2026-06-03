@@ -897,6 +897,19 @@ def check_password():
 
 check_password()
 
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+html, body, [class*="css"], .stMarkdown, .stMetric label,
+.stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
+.stCaption, .stButton button, .stSelectbox, .stTextInput input,
+.stNumberInput input, .stRadio, .stProgress, .stDataFrame,
+div, span, p, h1, h2, h3, h4, td, th {
+    font-family: 'Inter', sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚡ AION V")
