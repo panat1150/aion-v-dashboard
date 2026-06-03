@@ -570,6 +570,23 @@ def page_add_obd():
         st.balloons()
 
 
+# ── Auth ───────────────────────────────────────────────────────────────────────
+def check_password():
+    if st.session_state.get("authenticated"):
+        return True
+    with st.form("login"):
+        st.markdown("### ⚡ AION V Intelligence")
+        pw = st.text_input("Password", type="password")
+        if st.form_submit_button("Enter"):
+            if pw == st.secrets.get("password", ""):
+                st.session_state["authenticated"] = True
+                st.rerun()
+            else:
+                st.error("Wrong password")
+    st.stop()
+
+check_password()
+
 # ── Main ───────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("## ⚡ AION V")
