@@ -391,45 +391,52 @@ def page_dashboard():
 
     st.divider()
 
-    # Battery + Charging KPIs
-    col_bat, col_kpi = st.columns(2)
+    # ── Battery Health ────────────────────────────────────────────────────────
+    lbl = f"  <small style='color:#484f58'>snapshot: {k['obd_date']}</small>" if k["obd_date"] != "-" else ""
+    st.markdown(f"### 🔋 Battery Health{lbl}", unsafe_allow_html=True)
 
-    with col_bat:
-        lbl = f"  <small style='color:#484f58'>snapshot: {k['obd_date']}</small>" if k["obd_date"] != "-" else ""
-        st.markdown(f"**🔋 Battery Health**{lbl}", unsafe_allow_html=True)
+    bg1, bg2, bg3 = st.columns([1, 2, 2])
+
+    with bg1:
         if k["soh"]:
             st.plotly_chart(chart_soh_gauge(k["soh"]), use_container_width=True)
-        b1, b2 = st.columns(2)
-        b1.metric("Cell Spread",    f"{k['spread']:.1f} mV" if k["spread"] else "—",
-                  "< 5 mV = ดีมาก")
-        b1.metric("Round-trip eff.", f"{k['rt_eff']*100:.1f}%" if k["rt_eff"] else "—")
-        b2.metric("Max Mod Temp",   f"{k['max_temp']}°C" if k["max_temp"] else "—")
-        b2.metric("SoC at OBD",     f"{k['obd_soc']}%" if k["obd_soc"] else "—")
+
+    with bg2:
+        m1, m2 = st.columns(2)
+        m1.metric("Cell Spread",     f"{k['spread']:.1f} mV" if k["spread"] else "—", "< 5 mV = ดีมาก")
+        m2.metric("Max Mod Temp",    f"{k['max_temp']}°C"    if k["max_temp"] else "—")
+        m1.metric("Round-trip eff.", f"{k['rt_eff']*100:.1f}%" if k["rt_eff"] else "—")
+        m2.metric("SoC at OBD",      f"{k['obd_soc']}%"     if k["obd_soc"] else "—")
+
+    with bg3:
         cyc_pct = min(k["cycles"] / 1000, 1.0) if k["cycles"] > 0 else 0.0
-        st.progress(cyc_pct, text=f"Equiv. Cycles: {k['cycles']:.1f} / 1,000")
+        st.metric("Equiv. Cycles",  f"{k['cycles']:.1f} / 1,000")
+        st.progress(cyc_pct)
+        st.metric("Degrade rate",   f"{k['deg']:.3f}%/cycle" if k["deg"] else "—")
         if k["p80"] > 0 and k["p80km"] > 0:
             st.info(
                 f"🔋 SoH 80% คาดที่ cycle **{k['p80']:,.0f}** "
-                f"(ขับเพิ่มได้อีก ~**{k['p80km']:,.0f} km**) | "
-                f"Degrade: {k['deg']:.3f}%/cycle"
+                f"(+**{k['p80km']:,.0f} km**)"
             )
         else:
             st.caption("ต้องการ OBD snapshot เพิ่มเพื่อคำนวณ projection")
 
-    with col_kpi:
-        st.markdown("**⚡ Charging Overview**")
-        r1 = st.columns(4)
-        r1[0].metric("Sessions",        f"{k['sessions']}")
-        r1[1].metric("Total kWh",       f"{k['total_kwh']:.1f}")
-        r1[2].metric("ต้นทุนรวม",        f"฿{k['total_cost']:,.0f}")
-        r1[3].metric("Avg Efficiency",   f"{k['avg_eff']} kWh/100")
-        r2 = st.columns(4)
-        r2[0].metric("Est. Full Range",  f"{k['avg_range']:.0f} km", "10% reserve")
-        r2[1].metric("Cost per km",      f"฿{k['cpkm']}/km",
-                     f"vs ฿{k['pet_cpkm']:.2f} น้ำมัน")
-        r2[2].metric("Home Charged",     f"{k['home_pct']}%",
-                     f"{k['home_kwh']:.1f} kWh")
-        r2[3].metric("Best DC Rate",     f"฿{k['best_dc']}" if k["best_dc"] else "—")
+    st.divider()
+
+    # ── Charging Overview ──────────────────────────────────────────────────────
+    st.markdown("### ⚡ Charging Overview")
+    r1 = st.columns(4)
+    r1[0].metric("Sessions",       f"{k['sessions']}")
+    r1[1].metric("Total kWh",      f"{k['total_kwh']:.1f}")
+    r1[2].metric("ต้นทุนรวม",       f"฿{k['total_cost']:,.0f}")
+    r1[3].metric("Avg Efficiency",  f"{k['avg_eff']} kWh/100")
+    r2 = st.columns(4)
+    r2[0].metric("Est. Full Range", f"{k['avg_range']:.0f} km",  "10% reserve")
+    r2[1].metric("Cost per km",     f"฿{k['cpkm']}/km",
+                 f"vs ฿{k['pet_cpkm']:.2f} น้ำมัน")
+    r2[2].metric("Home Charged",    f"{k['home_pct']}%",
+                 f"{k['home_kwh']:.1f} kWh")
+    r2[3].metric("Best DC Rate",    f"฿{k['best_dc']}" if k["best_dc"] else "—")
 
     # Insights
     ins = []
