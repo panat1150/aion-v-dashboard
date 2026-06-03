@@ -919,35 +919,28 @@ div, span, p, h1, h2, h3, h4, td, th {
     font-family: 'Inter', sans-serif !important;
 }
 </style>
+""", unsafe_allow_html=True)
+
+import streamlit.components.v1 as components
+components.html("""
 <script>
-(function removeSidebarBtn() {
-    const selectors = [
-        '[data-testid="collapsedControl"]',
-        '[data-testid="stSidebarCollapseButton"]',
-        'button[title*="arrow"]',
-        'button[title*="keyboard"]',
-        'button[title*="sidebar"]',
-        'button[title*="collapse"]',
-        'button[title*="Collapse"]',
-    ];
-    function tryRemove() {
-        selectors.forEach(sel => {
-            document.querySelectorAll(sel).forEach(el => {
-                el.style.display = 'none';
-                el.style.pointerEvents = 'none';
+(function() {
+    function fix(doc) {
+        ['[data-testid="collapsedControl"]','[data-testid="stSidebarCollapseButton"]'].forEach(sel => {
+            doc.querySelectorAll(sel).forEach(el => {
+                el.style.cssText = 'display:none!important;pointer-events:none!important';
                 el.removeAttribute('title');
             });
         });
-        // also strip title from all sidebar buttons
-        const sidebar = document.querySelector('section[data-testid="stSidebar"]');
-        if (sidebar) sidebar.querySelectorAll('button').forEach(btn => btn.removeAttribute('title'));
+        const sb = doc.querySelector('section[data-testid="stSidebar"]');
+        if (sb) sb.querySelectorAll('button').forEach(b => b.removeAttribute('title'));
     }
-    tryRemove();
-    const observer = new MutationObserver(tryRemove);
-    observer.observe(document.body, { childList: true, subtree: true });
+    fix(window.parent.document);
+    new MutationObserver(() => fix(window.parent.document))
+        .observe(window.parent.document.body, {childList:true, subtree:true});
 })();
 </script>
-""", unsafe_allow_html=True)
+""", height=0)
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 with st.sidebar:
