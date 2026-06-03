@@ -513,11 +513,9 @@ def page_add_charge():
 def _parse_obd_csv(content: bytes, filename: str) -> dict:
     import io
     df = pd.read_csv(io.BytesIO(content), sep=";", quotechar='"',
-                     header=0, engine="python", on_bad_lines="skip")
-    df.columns = [c.strip('"').strip() for c in df.columns]
-    # drop trailing empty column from trailing semicolon
-    df = df.loc[:, df.columns != ""]
-    df.columns = ["SECONDS", "PID", "VALUE", "UNITS", "LAT", "LON"][:len(df.columns)]
+                     header=0, engine="python", on_bad_lines="skip",
+                     usecols=range(6))
+    df.columns = ["SECONDS", "PID", "VALUE", "UNITS", "LAT", "LON"]
     df["VALUE"] = pd.to_numeric(df["VALUE"], errors="coerce")
 
     def last_nonzero(pid):
