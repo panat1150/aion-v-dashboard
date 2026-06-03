@@ -735,12 +735,24 @@ def page_edit_charge():
         st.rerun()
 
     if do_del:
-        all_ch = store.get_records("charge_log")
-        all_ch.pop(orig_idx)
-        store.save_records("charge_log", all_ch)
-        get_data.clear()
-        st.success("Deleted")
-        st.rerun()
+        st.session_state["_del_charge_idx"] = orig_idx
+
+    if st.session_state.get("_del_charge_idx") is not None:
+        idx_del = st.session_state["_del_charge_idx"]
+        sd = charges[idx_del]
+        st.warning(f"⚠️ ยืนยันลบ: {sd['date']} | odo {sd['odo']:,} | {sd['kwh']} kWh | {sd.get('station','')}?")
+        cc1, cc2 = st.columns(2)
+        if cc1.button("✅ ยืนยันลบ", type="primary", key="confirm_del_charge"):
+            all_ch = store.get_records("charge_log")
+            all_ch.pop(idx_del)
+            store.save_records("charge_log", all_ch)
+            get_data.clear()
+            del st.session_state["_del_charge_idx"]
+            st.success("Deleted")
+            st.rerun()
+        if cc2.button("❌ ยกเลิก", key="cancel_del_charge"):
+            del st.session_state["_del_charge_idx"]
+            st.rerun()
 
 
 def page_edit_obd():
@@ -803,12 +815,24 @@ def page_edit_obd():
         st.rerun()
 
     if do_del:
-        all_ob = store.get_records("obd_log")
-        all_ob.pop(orig_idx)
-        store.save_records("obd_log", all_ob)
-        get_data.clear()
-        st.success("Deleted")
-        st.rerun()
+        st.session_state["_del_obd_idx"] = orig_idx
+
+    if st.session_state.get("_del_obd_idx") is not None:
+        idx_del = st.session_state["_del_obd_idx"]
+        od = obds[idx_del]
+        st.warning(f"⚠️ ยืนยันลบ: {od['date']} | SoH {od['soh']}% | odo {od.get('odo',0):,}?")
+        cc1, cc2 = st.columns(2)
+        if cc1.button("✅ ยืนยันลบ", type="primary", key="confirm_del_obd"):
+            all_ob = store.get_records("obd_log")
+            all_ob.pop(idx_del)
+            store.save_records("obd_log", all_ob)
+            get_data.clear()
+            del st.session_state["_del_obd_idx"]
+            st.success("Deleted")
+            st.rerun()
+        if cc2.button("❌ ยกเลิก", key="cancel_del_obd"):
+            del st.session_state["_del_obd_idx"]
+            st.rerun()
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
