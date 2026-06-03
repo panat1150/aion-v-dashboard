@@ -160,27 +160,68 @@ def _cfg(fig, height=None):
     return fig
 
 
-def chart_soh_gauge(soh):
-    clr = GREEN if soh >= 90 else YELLOW if soh >= 80 else RED
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=soh,
-        number={"suffix": "%", "font": {"size": 32, "color": clr}},
-        gauge={
-            "axis": {"range": [70, 100], "tickcolor": MUTED, "tickfont": {"size": 9}},
-            "bar": {"color": clr, "thickness": 0.25},
-            "bgcolor": PBKG, "bordercolor": "#30363d",
-            "steps": [
-                {"range": [70, 80], "color": "rgba(248,81,73,0.15)"},
-                {"range": [80, 90], "color": "rgba(210,153,34,0.15)"},
-                {"range": [90, 100], "color": "rgba(63,185,80,0.15)"},
-            ],
-            "threshold": {"line": {"color": RED, "width": 2}, "thickness": 0.75, "value": 80},
-        },
-    ))
-    fig.update_layout(paper_bgcolor=PBKG, font={"color": MUTED},
-                      height=200, margin=dict(l=20, r=20, t=30, b=10))
-    return fig
+def soh_gauge_html(soh):
+    import math
+    clr  = GREEN if soh >= 90 else YELLOW if soh >= 80 else RED
+    glow = clr + "66"
+    cx, cy, r, sw = 100, 95, 72, 14
+
+    def pt(deg):
+        rad = math.radians(deg)
+        return cx + r * math.cos(rad), cy - r * math.sin(rad)
+
+    # Full background arc: 180° → 0° (upper semicircle, counterclockwise on screen)
+    x0, y0 = pt(180)
+    x1, y1 = pt(0)
+
+    # SoH fill arc endpoint
+    end_deg  = 180 - (soh / 100) * 180
+    xe, ye   = pt(end_deg)
+    large    = 1 if (soh / 100) * 180 > 180 else 0
+
+    # 80% threshold marker
+    t80_deg  = 180 - 0.80 * 180  # = 36°
+    tx0, ty0 = pt(t80_deg - 2)
+    tx1, ty1 = pt(t80_deg + 2)
+    mr_in    = r - sw - 4
+    mr_out   = r + sw + 4
+    mx0      = cx + mr_in  * math.cos(math.radians(t80_deg))
+    my0      = cy - mr_in  * math.sin(math.radians(t80_deg))
+    mx1      = cx + mr_out * math.cos(math.radians(t80_deg))
+    my1      = cy - mr_out * math.sin(math.radians(t80_deg))
+
+    return f"""
+<div style="background:#000;border-radius:16px;padding:12px 8px 4px;text-align:center">
+  <svg viewBox="0 0 200 120" width="100%" style="overflow:visible">
+    <defs>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="3" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+    <!-- bg track -->
+    <path d="M {x0:.1f} {y0:.1f} A {r} {r} 0 0 0 {x1:.1f} {y1:.1f}"
+          fill="none" stroke="#1c1c2e" stroke-width="{sw}" stroke-linecap="round"/>
+    <!-- fill arc -->
+    <path d="M {x0:.1f} {y0:.1f} A {r} {r} 0 {large} 0 {xe:.1f} {ye:.1f}"
+          fill="none" stroke="{clr}" stroke-width="{sw}" stroke-linecap="round"
+          filter="url(#glow)"/>
+    <!-- 80% threshold marker -->
+    <line x1="{mx0:.1f}" y1="{my0:.1f}" x2="{mx1:.1f}" y2="{my1:.1f}"
+          stroke="#f85149" stroke-width="2.5" stroke-linecap="round"/>
+    <!-- percentage text -->
+    <text x="100" y="88" text-anchor="middle"
+          font-family="Inter,sans-serif" font-size="36" font-weight="800"
+          fill="{clr}" filter="url(#glow)">{soh:.1f}%</text>
+    <!-- label -->
+    <text x="100" y="112" text-anchor="middle"
+          font-family="Inter,sans-serif" font-size="8.5" font-weight="600"
+          fill="#484f58" letter-spacing="2">STATE OF HEALTH</text>
+    <!-- 80% label -->
+    <text x="{mx1+6:.0f}" y="{my1+3:.0f}" font-family="Inter,sans-serif"
+          font-size="7" fill="#f85149">80%</text>
+  </svg>
+</div>"""
 
 
 def chart_savings(cum):
@@ -401,7 +442,7 @@ def page_dashboard():
 
     with bg1:
         if k["soh"]:
-            st.plotly_chart(chart_soh_gauge(k["soh"]), use_container_width=True)
+            st.markdown(soh_gauge_html(k["soh"]), unsafe_allow_html=True)
 
     with bg2:
         m1, m2 = st.columns(2)
