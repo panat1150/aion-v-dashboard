@@ -904,8 +904,14 @@ st.markdown("""
 [data-testid="collapsedControl"] { display: none !important; }
 section[data-testid="stSidebar"] > div:first-child { min-width: 260px !important; }
 section[data-testid="stSidebar"], section[data-testid="stSidebar"] * { overflow-x: hidden !important; }
-section[data-testid="stSidebar"] { scrollbar-width: none !important; -ms-overflow-style: none !important; }
+section[data-testid="stSidebar"] { scrollbar-width: none !important; -ms-overflow-style: none !important; overflow-y: hidden !important; }
 section[data-testid="stSidebar"]::-webkit-scrollbar { display: none !important; }
+section[data-testid="stSidebar"] .block-container { padding-top: 0.5rem !important; }
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] { gap: 0.2rem !important; }
+section[data-testid="stSidebar"] hr { margin: 0.3rem 0 !important; }
+section[data-testid="stSidebar"] .stButton { margin: 0 !important; }
+section[data-testid="stSidebar"] .stRadio { margin-top: 0 !important; }
+section[data-testid="stSidebar"] .stRadio label { font-size: 0.85rem !important; padding: 2px 0 !important; }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
 .stCaption, .stButton button, .stSelectbox, .stTextInput input,
@@ -922,13 +928,13 @@ with st.sidebar:
     _img_b64 = base64.b64encode(pathlib.Path("car.jpg").read_bytes()).decode()
     st.markdown(
         f'<img src="data:image/jpeg;base64,{_img_b64}" '
-        f'style="width:100%;border-radius:10px;pointer-events:none;user-select:none">',
+        f'style="width:100%;max-height:150px;object-fit:cover;border-radius:10px;pointer-events:none;user-select:none;display:block">',
         unsafe_allow_html=True,
     )
     st.markdown(
-        "<div style='text-align:center;margin:-8px 0 4px'>"
-        "<span style='font-size:1.1rem;font-weight:800;color:#58a6ff'>⚡ GAC AION V 602</span><br>"
-        "<span style='font-size:0.7rem;color:#8b949e;letter-spacing:.05em'>SAHARA SAND  |  6ขธ 8343</span>"
+        "<div style='text-align:center;margin:4px 0 0'>"
+        "<span style='font-size:1rem;font-weight:800;color:#58a6ff'>⚡ GAC AION V 602</span><br>"
+        "<span style='font-size:0.65rem;color:#8b949e;letter-spacing:.05em'>SAHARA SAND  |  6ขธ 8343</span>"
         "</div>",
         unsafe_allow_html=True,
     )
