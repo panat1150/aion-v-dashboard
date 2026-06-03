@@ -573,33 +573,62 @@ def page_add_obd():
     with tab_csv:
         st.caption("Upload CSV จาก OBD app (CarScanner / Torque) — semicolon-separated format")
         uploaded = st.file_uploader("เลือกไฟล์ .csv", type=["csv"], key="obd_csv")
+
+        # Parse only when a new file is uploaded
         if uploaded:
-            try:
-                p = _parse_obd_csv(uploaded.read(), uploaded.name)
-            except Exception as e:
-                st.error(f"Parse error: {e}")
-                return
-            spread = round((p["max_cell_v"] - p["min_cell_v"]) * 1000, 2)
-            st.success(f"Parse สำเร็จ — {uploaded.name}")
-            r1 = st.columns(4)
-            r1[0].metric("Date",   p["date"])
-            r1[1].metric("SoH",    f"{p['soh']}%")
-            r1[2].metric("SoC",    f"{p['soc']}%")
-            r1[3].metric("Odometer", f"{p['odo']:,} km")
-            r2 = st.columns(4)
-            r2[0].metric("Pack V",     f"{p['pack_v']} V")
-            r2[1].metric("Total Chg",  f"{p['tc']} kWh")
-            r2[2].metric("Total Dis",  f"{p['td']} kWh")
-            r2[3].metric("Cell Spread", f"{spread:.2f} mV")
-            r3 = st.columns(4)
-            r3[0].metric("Max Cell V", f"{p['max_cell_v']} V")
-            r3[1].metric("Min Cell V", f"{p['min_cell_v']} V")
-            r3[2].metric("Max Temp",   f"{p['max_temp']}°C")
-            r3[3].metric("Min Temp",   f"{p['min_temp']}°C")
-            notes = st.text_input("Notes (optional)", key="csv_notes")
-            if st.button("💾 Save This Snapshot", type="primary"):
-                _save_obd_record(p, notes)
-                st.success(f"Saved: {p['date']} SoH={p['soh']}%")
+            if st.session_state.get("_obd_csv_name") != uploaded.name:
+                try:
+                    st.session_state["_obd_csv_parsed"] = _parse_obd_csv(uploaded.read(), uploaded.name)
+                    st.session_state["_obd_csv_name"]   = uploaded.name
+                except Exception as e:
+                    st.error(f"Parse error: {e}")
+                    st.session_state.pop("_obd_csv_parsed", None)
+
+        p = st.session_state.get("_obd_csv_parsed")
+        if p:
+            st.success(f"Parse สำเร็จ — {st.session_state['_obd_csv_name']}  |  แก้ค่าได้ก่อนกด Save")
+            # Editable form pre-filled from parsed values
+            # Form key includes date so it resets when new file loaded
+            with st.form(f"obd_csv_form_{p['date']}"):
+                c1, c2, c3 = st.columns(3)
+                d_val  = datetime.strptime(p["date"], "%Y-%m-%d").date()
+                d      = c1.date_input("Date",        value=d_val)
+                sname  = c2.text_input("Session Name", value=p.get("session", ""))
+                odo    = c3.number_input("Odometer (km) ⚠️ กรอกเอง",
+                                         value=int(p["odo"]), min_value=0, step=1)
+                c4, c5 = st.columns(2)
+                soc = c4.number_input("SoC (%)",  0.0, 100.0,
+                                      value=float(p["soc"]), step=0.1, format="%.1f")
+                soh = c5.number_input("SoH (%)",  0.0, 100.0,
+                                      value=float(p["soh"]), step=0.1, format="%.1f")
+                c6, c7 = st.columns(2)
+                pack_v  = c6.number_input("Pack V",    value=float(p["pack_v"]),  step=0.1,  format="%.1f")
+                current = c7.number_input("Current A", value=float(p["current"]), step=0.01, format="%.2f")
+                c8, c9, c10 = st.columns(3)
+                max_cv  = c8.number_input("Max Cell V", value=float(p["max_cell_v"]), step=0.001, format="%.3f")
+                min_cv  = c9.number_input("Min Cell V", value=float(p["min_cell_v"]), step=0.001, format="%.3f")
+                spread  = round((max_cv - min_cv) * 1000, 2) if max_cv and min_cv else 0
+                c10.metric("Cell Spread", f"{spread:.2f} mV")
+                c11, c12 = st.columns(2)
+                max_t = c11.number_input("Max Mod T°C", value=float(p["max_temp"]), step=0.1, format="%.1f")
+                min_t = c12.number_input("Min Mod T°C", value=float(p["min_temp"]), step=0.1, format="%.1f")
+                c13, c14 = st.columns(2)
+                tc = c13.number_input("Total Charged kWh",    value=float(p["tc"]), step=0.1, format="%.1f")
+                td = c14.number_input("Total Discharged kWh", value=float(p["td"]), step=0.1, format="%.1f")
+                notes     = st.text_input("Notes (optional)")
+                submitted = st.form_submit_button("💾 Save Snapshot", type="primary")
+
+            if submitted:
+                _save_obd_record({
+                    "date": d.strftime("%Y-%m-%d"), "session": sname,
+                    "soc": soc, "soh": soh, "odo": odo,
+                    "pack_v": pack_v, "current": current,
+                    "max_cell_v": max_cv, "min_cell_v": min_cv,
+                    "max_temp": max_t, "min_temp": min_t, "tc": tc, "td": td,
+                }, notes)
+                st.session_state.pop("_obd_csv_parsed", None)
+                st.session_state.pop("_obd_csv_name", None)
+                st.success(f"Saved: {d.strftime('%Y-%m-%d')} SoH={soh}%")
                 st.balloons()
 
     # ── Tab 2: Manual entry ────────────────────────────────────────────────────
