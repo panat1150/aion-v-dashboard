@@ -3,7 +3,7 @@
 import streamlit as st
 import plotly.graph_objects as go
 import pandas as pd
-from datetime import date
+from datetime import date, datetime
 from collections import defaultdict
 import store
 
@@ -570,6 +570,142 @@ def page_add_obd():
         st.balloons()
 
 
+# ── Edit pages ────────────────────────────────────────────────────────────────
+def page_edit_charge():
+    st.markdown("### ✏️ Edit / Delete Charge Session")
+    charges, _ = get_data()
+    if not charges:
+        st.warning("ยังไม่มีข้อมูล")
+        return
+
+    indexed = list(reversed(list(enumerate(charges))))
+    labels  = [f"#{i+1} | {s['date']} | odo {s['odo']:,} | {s.get('station','')} | {s['kwh']} kWh"
+               for i, s in indexed]
+    sel     = st.selectbox("เลือก session", labels)
+    pos     = labels.index(sel)
+    orig_idx, s = indexed[pos]
+
+    rate_labels  = list(RATE_OPTIONS.keys())
+    rate_default = min(rate_labels, key=lambda l: abs(RATE_OPTIONS[l] - s.get("rate", 0)))
+    type_opts    = ["Home", "DC Fast", "AC", "Free", "Other"]
+
+    with st.form(f"edit_charge_{orig_idx}"):
+        c1, c2 = st.columns(2)
+        d   = c1.date_input("Date",          value=datetime.strptime(s["date"], "%Y-%m-%d").date())
+        odo = c2.number_input("Odometer (km)", value=int(s["odo"]), step=1)
+        c3, c4 = st.columns(2)
+        kwh        = c3.number_input("kWh", value=float(s["kwh"]), step=0.001, format="%.3f")
+        rate_label = c4.selectbox("Rate (฿/kWh)", rate_labels,
+                                  index=rate_labels.index(rate_default))
+        rate = RATE_OPTIONS[rate_label]
+        if kwh > 0:
+            c4.caption(f"Cost: ฿{kwh * rate:.2f}")
+        c5, c6  = st.columns(2)
+        station = c5.text_input("Station", value=s.get("station", ""))
+        ctype   = c6.selectbox("Type", type_opts,
+                               index=type_opts.index(s.get("type", "Home"))
+                               if s.get("type") in type_opts else 0)
+        notes = st.text_input("Notes", value=s.get("notes", ""))
+        cs, cd  = st.columns([4, 1])
+        do_save = cs.form_submit_button("💾 Save Changes", type="primary")
+        do_del  = cd.form_submit_button("🗑 Delete")
+
+    if do_save:
+        ds        = d.strftime("%Y-%m-%d")
+        all_ch    = store.get_records("charge_log")
+        other_odo = [c["odo"] for i, c in enumerate(all_ch) if i != orig_idx]
+        prev_odo  = max((o for o in other_odo if o < odo), default=None)
+        dist = (odo - prev_odo) if prev_odo else s.get("dist", 0)
+        cost = round(kwh * rate, 3)
+        eff  = round(kwh / dist * 100, 3) if dist > 0 else 0
+        cpkm = round(cost / dist, 3)       if dist > 0 else 0
+        all_ch[orig_idx] = {**all_ch[orig_idx],
+                            "date": ds, "odo": odo, "dist": dist, "kwh": kwh,
+                            "rate": rate, "cost": cost, "eff": eff, "cpkm": cpkm,
+                            "station": station, "type": ctype, "notes": notes, "month": ds[:7]}
+        all_ch.sort(key=lambda x: (x["date"], x["odo"]))
+        store.save_records("charge_log", all_ch)
+        get_data.clear()
+        st.success("Updated")
+        st.rerun()
+
+    if do_del:
+        all_ch = store.get_records("charge_log")
+        all_ch.pop(orig_idx)
+        store.save_records("charge_log", all_ch)
+        get_data.clear()
+        st.success("Deleted")
+        st.rerun()
+
+
+def page_edit_obd():
+    st.markdown("### ✏️ Edit / Delete OBD Snapshot")
+    _, obds = get_data()
+    if not obds:
+        st.warning("ยังไม่มี OBD snapshot")
+        return
+
+    indexed = list(reversed(list(enumerate(obds))))
+    labels  = [f"#{i+1} | {o['date']} | SoH {o['soh']}% | odo {o.get('odo',0):,}"
+               for i, o in indexed]
+    sel     = st.selectbox("เลือก snapshot", labels)
+    pos     = labels.index(sel)
+    orig_idx, o = indexed[pos]
+
+    with st.form(f"edit_obd_{orig_idx}"):
+        c1, c2, c3 = st.columns(3)
+        d            = c1.date_input("Date",         value=datetime.strptime(o["date"], "%Y-%m-%d").date())
+        session_name = c2.text_input("Session Name", value=o.get("session", ""))
+        odo          = c3.number_input("Odometer",   value=int(o.get("odo", 0)), step=1)
+        c4, c5 = st.columns(2)
+        soc = c4.number_input("SoC (%)", 0.0, 100.0, value=float(o.get("soc", 0)), step=0.1, format="%.1f")
+        soh = c5.number_input("SoH (%)", 0.0, 100.0, value=float(o.get("soh", 0)), step=0.1, format="%.1f")
+        c6, c7 = st.columns(2)
+        pack_v  = c6.number_input("Pack V",    value=float(o.get("pack_v",  0)), step=0.1,  format="%.1f")
+        current = c7.number_input("Current A", value=float(o.get("current", 0)), step=0.01, format="%.2f")
+        c8, c9, c10 = st.columns(3)
+        max_cv = c8.number_input("Max Cell V", value=float(o.get("max_cell_v", 0)), step=0.001, format="%.3f")
+        min_cv = c9.number_input("Min Cell V", value=float(o.get("min_cell_v", 0)), step=0.001, format="%.3f")
+        spread = round((max_cv - min_cv) * 1000, 2) if max_cv and min_cv else 0
+        c10.metric("Cell Spread", f"{spread:.2f} mV" if spread else "—")
+        c11, c12, c13 = st.columns(3)
+        max_t = c11.number_input("Max Mod T°C", value=float(o.get("max_temp", 0)), step=0.1, format="%.1f")
+        min_t = c12.number_input("Min Mod T°C", value=float(o.get("min_temp", 0)), step=0.1, format="%.1f")
+        ctrl  = c13.number_input("Ctrl T°C",    value=float(o.get("tc", 0) and 0), step=0.1, format="%.1f")
+        c14, c15 = st.columns(2)
+        tc = c14.number_input("Total Charged kWh",    value=float(o.get("tc", 0)), step=0.1, format="%.1f")
+        td = c15.number_input("Total Discharged kWh", value=float(o.get("td", 0)), step=0.1, format="%.1f")
+        notes    = st.text_input("Notes", value=o.get("notes", ""))
+        cs, cd   = st.columns([4, 1])
+        do_save  = cs.form_submit_button("💾 Save Changes", type="primary")
+        do_del   = cd.form_submit_button("🗑 Delete")
+
+    if do_save:
+        ds      = d.strftime("%Y-%m-%d")
+        cycles  = round(td / BAT, 1) if td > 0 else 0
+        rt_eff  = round(td / tc, 4)  if tc > 0 else 0
+        all_ob  = store.get_records("obd_log")
+        all_ob[orig_idx] = {**all_ob[orig_idx],
+                            "date": ds, "session": session_name, "soc": soc, "soh": soh,
+                            "odo": odo, "pack_v": pack_v, "current": current,
+                            "max_cell_v": max_cv, "min_cell_v": min_cv, "spread": spread,
+                            "max_temp": max_t, "min_temp": min_t,
+                            "tc": tc, "td": td, "cycles": cycles, "rt_eff": rt_eff, "notes": notes}
+        all_ob.sort(key=lambda x: x["date"])
+        store.save_records("obd_log", all_ob)
+        get_data.clear()
+        st.success("Updated")
+        st.rerun()
+
+    if do_del:
+        all_ob = store.get_records("obd_log")
+        all_ob.pop(orig_idx)
+        store.save_records("obd_log", all_ob)
+        get_data.clear()
+        st.success("Deleted")
+        st.rerun()
+
+
 # ── Auth ───────────────────────────────────────────────────────────────────────
 def check_password():
     if st.session_state.get("authenticated"):
@@ -578,7 +714,8 @@ def check_password():
         st.markdown("### ⚡ AION V Intelligence")
         pw = st.text_input("Password", type="password")
         if st.form_submit_button("Enter"):
-            if pw == st.secrets["password"]:
+            expected = st.secrets.get("password") or st.secrets["supabase"].get("password", "")
+            if pw == expected:
                 st.session_state["authenticated"] = True
                 st.rerun()
             else:
@@ -595,7 +732,8 @@ with st.sidebar:
         get_data.clear()
         st.rerun()
     page = st.radio(
-        "nav", ["📊 Dashboard", "⚡ Add Charge", "🔋 Add OBD"],
+        "nav", ["📊 Dashboard", "⚡ Add Charge", "🔋 Add OBD",
+                "✏️ Edit Charge", "✏️ Edit OBD"],
         label_visibility="collapsed",
     )
 
@@ -605,3 +743,7 @@ elif page == "⚡ Add Charge":
     page_add_charge()
 elif page == "🔋 Add OBD":
     page_add_obd()
+elif page == "✏️ Edit Charge":
+    page_edit_charge()
+elif page == "✏️ Edit OBD":
+    page_edit_obd()
