@@ -578,7 +578,7 @@ def check_password():
         st.markdown("### ⚡ AION V Intelligence")
         pw = st.text_input("Password", type="password")
         if st.form_submit_button("Enter"):
-            if pw == st.secrets.get("password", ""):
+            if pw == st.secrets["password"]:
                 st.session_state["authenticated"] = True
                 st.rerun()
             else:
