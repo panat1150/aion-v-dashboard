@@ -510,64 +510,142 @@ def page_add_charge():
         st.balloons()
 
 
+def _parse_obd_csv(content: bytes, filename: str) -> dict:
+    import io
+    df = pd.read_csv(io.BytesIO(content), sep=";", quotechar='"',
+                     header=0, engine="python", on_bad_lines="skip")
+    df.columns = [c.strip('"').strip() for c in df.columns]
+    # drop trailing empty column from trailing semicolon
+    df = df.loc[:, df.columns != ""]
+    df.columns = ["SECONDS", "PID", "VALUE", "UNITS", "LAT", "LON"][:len(df.columns)]
+    df["VALUE"] = pd.to_numeric(df["VALUE"], errors="coerce")
+
+    def last_nonzero(pid):
+        vals = df[df["PID"] == pid]["VALUE"].dropna()
+        nz   = vals[vals != 0]
+        if not nz.empty:  return float(nz.iloc[-1])
+        if not vals.empty: return float(vals.iloc[-1])
+        return 0.0
+
+    # Cell voltages for min (max available as own PID)
+    cell_vals = df[df["PID"].str.startswith("[BMS] Cell Voltage", na=False)]["VALUE"].dropna()
+    min_cv = float(cell_vals.min()) if not cell_vals.empty else 0.0
+    max_cv = last_nonzero("[BMS] Max Cell Voltage") or (float(cell_vals.max()) if not cell_vals.empty else 0.0)
+
+    # Date from filename: "2026-05-17 07-37-28.csv" → "2026-05-17"
+    try:    date_str = filename[:10]
+    except: date_str = date.today().strftime("%Y-%m-%d")
+
+    return {
+        "date":     date_str,
+        "session":  filename,
+        "soc":      last_nonzero("[BMS] Battery Pack Display SoC"),
+        "soh":      last_nonzero("[BMS] SoH"),
+        "pack_v":   last_nonzero("[BMS] Battery Voltage"),
+        "current":  last_nonzero("[BMS] Battery Current"),
+        "max_cell_v": round(max_cv, 3),
+        "min_cell_v": round(min_cv, 3),
+        "max_temp": last_nonzero("[BMS] Max Module Temperature"),
+        "min_temp": last_nonzero("[BMS] Min Module Temperature"),
+        "tc":       last_nonzero("[BMS] Total Charged Energy"),
+        "td":       last_nonzero("[BMS] Total Discharged Energy"),
+        "odo":      int(last_nonzero("[BMS] Odometer")),
+    }
+
+
+def _save_obd_record(rec: dict, notes: str = ""):
+    spread = round((rec["max_cell_v"] - rec["min_cell_v"]) * 1000, 2)
+    cycles = round(rec["td"] / BAT, 1) if rec["td"] > 0 else 0
+    rt_eff = round(rec["td"] / rec["tc"], 4) if rec["tc"] > 0 else 0
+    all_obds = store.get_records("obd_log")
+    all_obds.append({
+        **rec,
+        "spread": spread, "cycles": cycles, "rt_eff": rt_eff, "notes": notes,
+    })
+    all_obds.sort(key=lambda x: x["date"])
+    store.save_records("obd_log", all_obds)
+    get_data.clear()
+
+
 def page_add_obd():
     st.markdown("### 🔋 Add OBD / BMS Snapshot")
+    tab_csv, tab_manual = st.tabs(["📁 Upload CSV", "⌨️ Manual Entry"])
 
-    with st.form("obd_form", clear_on_submit=True):
-        c1, c2, c3 = st.columns(3)
-        d            = c1.date_input("Date", value=date.today())
-        session_name = c2.text_input("Session Name")
-        odo          = c3.number_input("Odometer", min_value=0, step=1)
+    # ── Tab 1: CSV upload ──────────────────────────────────────────────────────
+    with tab_csv:
+        st.caption("Upload CSV จาก OBD app (CarScanner / Torque) — semicolon-separated format")
+        uploaded = st.file_uploader("เลือกไฟล์ .csv", type=["csv"], key="obd_csv")
+        if uploaded:
+            try:
+                p = _parse_obd_csv(uploaded.read(), uploaded.name)
+            except Exception as e:
+                st.error(f"Parse error: {e}")
+                return
+            spread = round((p["max_cell_v"] - p["min_cell_v"]) * 1000, 2)
+            st.success(f"Parse สำเร็จ — {uploaded.name}")
+            r1 = st.columns(4)
+            r1[0].metric("Date",   p["date"])
+            r1[1].metric("SoH",    f"{p['soh']}%")
+            r1[2].metric("SoC",    f"{p['soc']}%")
+            r1[3].metric("Odometer", f"{p['odo']:,} km")
+            r2 = st.columns(4)
+            r2[0].metric("Pack V",     f"{p['pack_v']} V")
+            r2[1].metric("Total Chg",  f"{p['tc']} kWh")
+            r2[2].metric("Total Dis",  f"{p['td']} kWh")
+            r2[3].metric("Cell Spread", f"{spread:.2f} mV")
+            r3 = st.columns(4)
+            r3[0].metric("Max Cell V", f"{p['max_cell_v']} V")
+            r3[1].metric("Min Cell V", f"{p['min_cell_v']} V")
+            r3[2].metric("Max Temp",   f"{p['max_temp']}°C")
+            r3[3].metric("Min Temp",   f"{p['min_temp']}°C")
+            notes = st.text_input("Notes (optional)", key="csv_notes")
+            if st.button("💾 Save This Snapshot", type="primary"):
+                _save_obd_record(p, notes)
+                st.success(f"Saved: {p['date']} SoH={p['soh']}%")
+                st.balloons()
 
-        c4, c5 = st.columns(2)
-        soc = c4.number_input("SoC (%)", 0.0, 100.0, step=0.1, format="%.1f")
-        soh = c5.number_input("SoH (%)", 0.0, 100.0, step=0.1, format="%.1f")
+    # ── Tab 2: Manual entry ────────────────────────────────────────────────────
+    with tab_manual:
+        with st.form("obd_form", clear_on_submit=True):
+            c1, c2, c3 = st.columns(3)
+            d            = c1.date_input("Date", value=date.today())
+            session_name = c2.text_input("Session Name")
+            odo          = c3.number_input("Odometer", min_value=0, step=1)
+            c4, c5 = st.columns(2)
+            soc = c4.number_input("SoC (%)", 0.0, 100.0, step=0.1, format="%.1f")
+            soh = c5.number_input("SoH (%)", 0.0, 100.0, step=0.1, format="%.1f")
+            c6, c7 = st.columns(2)
+            pack_v  = c6.number_input("Pack V",    0.0, step=0.1,  format="%.1f")
+            current = c7.number_input("Current A", 0.0, step=0.01, format="%.2f")
+            c8, c9, c10 = st.columns(3)
+            max_cell_v = c8.number_input("Max Cell V", 0.0, step=0.001, format="%.3f")
+            min_cell_v = c9.number_input("Min Cell V", 0.0, step=0.001, format="%.3f")
+            spread_mv  = round((max_cell_v - min_cell_v) * 1000, 2) if max_cell_v and min_cell_v else 0
+            c10.metric("Cell Spread", f"{spread_mv:.2f} mV" if spread_mv else "—")
+            c11, c12, c13 = st.columns(3)
+            max_mod_temp = c11.number_input("Max Mod T°C", 0.0, step=0.1, format="%.1f")
+            min_mod_temp = c12.number_input("Min Mod T°C", 0.0, step=0.1, format="%.1f")
+            _            = c13.number_input("Ctrl T°C",    0.0, step=0.1, format="%.1f")
+            c14, c15 = st.columns(2)
+            total_charged    = c14.number_input("Total Charged kWh",    0.0, step=0.1, format="%.1f")
+            total_discharged = c15.number_input("Total Discharged kWh", 0.0, step=0.1, format="%.1f")
+            notes     = st.text_input("Notes (optional)")
+            submitted = st.form_submit_button("💾 Save OBD", type="primary")
 
-        c6, c7 = st.columns(2)
-        pack_v  = c6.number_input("Pack V",    0.0, step=0.1,  format="%.1f")
-        current = c7.number_input("Current A", 0.0, step=0.01, format="%.2f")
-
-        c8, c9, c10 = st.columns(3)
-        max_cell_v = c8.number_input("Max Cell V", 0.0, step=0.001, format="%.3f")
-        min_cell_v = c9.number_input("Min Cell V", 0.0, step=0.001, format="%.3f")
-        spread_mv  = round((max_cell_v - min_cell_v) * 1000, 2) if max_cell_v and min_cell_v else 0
-        c10.metric("Cell Spread", f"{spread_mv:.2f} mV" if spread_mv else "—")
-
-        c11, c12, c13 = st.columns(3)
-        max_mod_temp = c11.number_input("Max Mod T°C", 0.0, step=0.1, format="%.1f")
-        min_mod_temp = c12.number_input("Min Mod T°C", 0.0, step=0.1, format="%.1f")
-        ctrl_temp    = c13.number_input("Ctrl T°C",    0.0, step=0.1, format="%.1f")
-
-        c14, c15 = st.columns(2)
-        total_charged    = c14.number_input("Total Charged kWh (BMS)",    0.0, step=0.1, format="%.1f")
-        total_discharged = c15.number_input("Total Discharged kWh (BMS)", 0.0, step=0.1, format="%.1f")
-
-        notes     = st.text_input("Notes (optional)")
-        submitted = st.form_submit_button("💾 Save OBD", type="primary")
-
-    if submitted:
-        if not soh:
-            st.error("SoH จำเป็น")
-            return
-        ds     = d.strftime("%Y-%m-%d")
-        cycles = round(total_discharged / BAT, 1) if total_discharged > 0 else 0
-        rt_eff = round(total_discharged / total_charged, 4) if total_charged > 0 else 0
-        all_obds = store.get_records("obd_log")
-        all_obds.append({
-            "date": ds, "session": session_name,
-            "soc": soc, "soh": soh, "odo": odo,
-            "pack_v": pack_v, "current": current,
-            "max_cell_v": max_cell_v, "min_cell_v": min_cell_v,
-            "spread": spread_mv,
-            "max_temp": max_mod_temp, "min_temp": min_mod_temp,
-            "tc": total_charged, "td": total_discharged,
-            "cycles": cycles, "rt_eff": rt_eff, "notes": notes,
-        })
-        all_obds.sort(key=lambda x: x["date"])
-        store.save_records("obd_log", all_obds)
-        get_data.clear()
-        st.success(f"OBD saved: {ds} SoH={soh}%")
-        st.balloons()
+        if submitted:
+            if not soh:
+                st.error("SoH จำเป็น")
+                return
+            ds = d.strftime("%Y-%m-%d")
+            _save_obd_record({
+                "date": ds, "session": session_name, "soc": soc, "soh": soh, "odo": odo,
+                "pack_v": pack_v, "current": current,
+                "max_cell_v": max_cell_v, "min_cell_v": min_cell_v,
+                "max_temp": max_mod_temp, "min_temp": min_mod_temp,
+                "tc": total_charged, "td": total_discharged,
+            }, notes)
+            st.success(f"OBD saved: {ds} SoH={soh}%")
+            st.balloons()
 
 
 # ── Edit pages ────────────────────────────────────────────────────────────────
