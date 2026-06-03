@@ -96,11 +96,20 @@ def load_obd():
     return rows
 
 
+def load_secrets():
+    secrets_path = os.path.join(BASE, ".streamlit", "secrets.toml")
+    if os.path.exists(secrets_path):
+        import tomllib
+        with open(secrets_path, "rb") as f:
+            s = tomllib.load(f)
+        return s["supabase"]["url"], s["supabase"]["key"]
+    return os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY")
+
+
 def main():
-    url = os.environ.get("SUPABASE_URL")
-    key = os.environ.get("SUPABASE_KEY")
+    url, key = load_secrets()
     if not url or not key:
-        print("ERROR: set SUPABASE_URL and SUPABASE_KEY env vars")
+        print("ERROR: ไม่พบ .streamlit/secrets.toml และไม่มี env vars")
         sys.exit(1)
 
     client = create_client(url, key)
