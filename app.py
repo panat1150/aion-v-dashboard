@@ -359,12 +359,9 @@ def page_dashboard():
 
     def _stat(icon, value, label, color):
         return (
-            f'<div style="flex:1;text-align:center;padding:20px 10px;'
-            f'border-right:1px solid #30363d;min-width:0">'
-            f'<div style="font-size:1.7rem;font-weight:800;color:{color};'
-            f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{icon} {value}</div>'
-            f'<div style="font-size:0.68rem;color:#8b949e;text-transform:uppercase;'
-            f'letter-spacing:.07em;margin-top:6px">{label}</div>'
+            f'<div class="stat-item">'
+            f'<div class="stat-val" style="color:{color}">{icon} {value}</div>'
+            f'<div class="stat-lbl">{label}</div>'
             f'</div>'
         )
 
@@ -376,11 +373,7 @@ def page_dashboard():
         _stat("🔌",  f"{avg_kwh_day} kWh/วัน",      "kWh เฉลี่ยต่อวัน", "#bc8cff"),
         _stat("💸",  f"฿{avg_cost_day:,.0f}/วัน",   "ต้นทุนเฉลี่ยต่อวัน","#db6d28"),
     ])
-    st.markdown(
-        f'<div style="display:flex;background:#161b22;border:1px solid #30363d;'
-        f'border-radius:14px;margin:4px 0 18px;overflow:hidden">{strip}</div>',
-        unsafe_allow_html=True,
-    )
+    st.markdown(f'<div class="stat-strip">{strip}</div>', unsafe_allow_html=True)
 
     # Hero
     c1, c2, c3 = st.columns(3)
@@ -400,8 +393,14 @@ def page_dashboard():
     bg1, bg2, bg3 = st.columns([1, 2, 2])
 
     with bg1:
-        if k["soh"]:
+        if k["soh"] and k["soh"] > 0:
             st.plotly_chart(chart_soh_gauge(k["soh"]), use_container_width=True)
+        else:
+            st.markdown(
+                "<div style='text-align:center;padding:40px 0;color:#484f58;font-size:.8rem'>"
+                "ยังไม่มี OBD snapshot<br>กด Add OBD เพื่อเพิ่มข้อมูล</div>",
+                unsafe_allow_html=True,
+            )
 
     with bg2:
         m1, m2 = st.columns(2)
@@ -438,7 +437,7 @@ def page_dashboard():
                  f"vs ฿{k['pet_cpkm']:.2f} น้ำมัน")
     r2[2].metric("Home Charged",    f"{k['home_pct']}%",
                  f"{k['home_kwh']:.1f} kWh")
-    r2[3].metric("Best DC Rate",    f"฿{k['best_dc']}" if k["best_dc"] else "—")
+    r2[3].metric("Best DC Rate",    f"฿{k['best_dc']}/kWh" if k["best_dc"] else "ไม่มี DC", "ราคาถูกสุด")
 
     # Insights
     ins = []
@@ -497,15 +496,32 @@ def page_dashboard():
         st.markdown("**📊 Efficiency Distribution**")
         st.plotly_chart(chart_hist(hist_d, k["avg_eff"]), use_container_width=True)
 
-    # Recent sessions table
-    st.markdown("**📋 Recent Charge Sessions (ล่าสุด 25)**")
-    last25 = list(reversed(charges))[:25]
-    df = pd.DataFrame(last25)[
-        ["date", "odo", "dist", "kwh", "rate", "cost", "eff", "cpkm", "station", "type"]
+    # All sessions table
+    st.markdown(f"**📋 Charge Sessions ทั้งหมด ({len(charges)} รายการ)**")
+    all_df = pd.DataFrame(list(reversed(charges)))[
+        ["date", "odo", "dist", "kwh", "rate", "cost", "eff", "cpkm", "station", "type", "notes"]
     ]
-    df.columns = ["Date", "Odo (km)", "Dist", "kWh", "Rate ฿", "Cost ฿",
-                  "kWh/100km", "฿/km", "Station", "Type"]
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    all_df.columns = ["Date", "Odo (km)", "Dist (km)", "kWh", "Rate ฿/kWh", "Cost ฿",
+                      "kWh/100km", "฿/km", "Station", "Type", "Notes"]
+    st.dataframe(
+        all_df,
+        use_container_width=True,
+        hide_index=True,
+        height=min(35 * len(charges) + 38, 600),
+        column_config={
+            "Date":        st.column_config.TextColumn("Date",        width=95),
+            "Odo (km)":    st.column_config.NumberColumn("Odo (km)",  format="%,d", width=90),
+            "Dist (km)":   st.column_config.NumberColumn("Dist",      format="%.0f km", width=70),
+            "kWh":         st.column_config.NumberColumn("kWh",       format="%.3f", width=70),
+            "Rate ฿/kWh":  st.column_config.NumberColumn("Rate",      format="฿%.2f", width=65),
+            "Cost ฿":      st.column_config.NumberColumn("Cost ฿",    format="฿%.2f", width=75),
+            "kWh/100km":   st.column_config.NumberColumn("kWh/100",   format="%.2f", width=75),
+            "฿/km":        st.column_config.NumberColumn("฿/km",      format="฿%.2f", width=65),
+            "Station":     st.column_config.TextColumn("Station",     width=150),
+            "Type":        st.column_config.TextColumn("Type",        width=80),
+            "Notes":       st.column_config.TextColumn("Notes",       width=180),
+        },
+    )
 
 
 def page_add_charge():
@@ -917,6 +933,76 @@ html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stNumberInput input, .stRadio, .stProgress, .stDataFrame,
 div, span, p, h1, h2, h3, h4, td, th {
     font-family: 'Inter', sans-serif !important;
+}
+
+/* ── Stat strip ─────────────────────────────────────────── */
+.stat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 14px;
+    margin: 4px 0 18px;
+    overflow: hidden;
+}
+.stat-item {
+    flex: 1 1 0;
+    text-align: center;
+    padding: 16px 10px;
+    border-right: 1px solid #30363d;
+    min-width: 120px;
+}
+.stat-item:last-child { border-right: none; }
+.stat-val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    line-height: 1.15;
+    word-break: break-word;
+}
+.stat-lbl {
+    font-size: 0.65rem;
+    color: #8b949e;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    margin-top: 5px;
+}
+
+/* ── Mobile: stat strip 2-col ───────────────────────────── */
+@media (max-width: 700px) {
+    .stat-item {
+        flex: 0 0 50%;
+        max-width: 50%;
+        min-width: 0;
+    }
+    .stat-item:nth-child(even)  { border-right: none; }
+    .stat-item:nth-child(-n+4)  { border-bottom: 1px solid #30363d; }
+    .stat-val { font-size: 1.1rem; }
+}
+
+/* ── Mobile: Streamlit columns stack ───────────────────── */
+@media (max-width: 768px) {
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+    }
+    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        min-width: calc(50% - 8px) !important;
+        flex: 0 0 calc(50% - 8px) !important;
+    }
+}
+@media (max-width: 480px) {
+    [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+        min-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+    .stMetric [data-testid="stMetricValue"] {
+        font-size: 1.2rem !important;
+    }
+}
+
+/* ── Dataframe: prevent column header wrap ───────────────── */
+[data-testid="stDataFrame"] th {
+    white-space: nowrap !important;
 }
 </style>
 """, unsafe_allow_html=True)
