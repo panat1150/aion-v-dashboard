@@ -1057,32 +1057,52 @@ import streamlit.components.v1 as components
 components.html("""
 <script>
 (function() {
-    const isMobile = window.parent.innerWidth <= 768;
-    function fix(doc) {
-        if (isMobile) {
-            // Replace icon text with hamburger emoji directly
-            doc.querySelectorAll('[data-testid="collapsedControl"]').forEach(el => {
-                if (el.textContent.trim() !== '☰') {
-                    el.textContent = '☰';
-                    el.style.cssText = 'display:flex!important;visibility:visible!important;pointer-events:auto!important;font-size:1.3rem!important;color:#8b949e!important;background:transparent!important;border:none!important;cursor:pointer!important;padding:6px!important;';
-                }
-            });
-            // Hide in-sidebar collapse button only
-            doc.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(el => {
-                el.style.cssText = 'display:none!important';
-            });
-        } else {
-            // Desktop: hide both buttons
-            ['[data-testid="collapsedControl"]','[data-testid="stSidebarCollapseButton"]'].forEach(sel => {
-                doc.querySelectorAll(sel).forEach(el => {
-                    el.style.cssText = 'display:none!important';
-                });
-            });
+  try {
+    const doc = window.parent.document;
+    const mob = window.parent.innerWidth <= 768;
+
+    // Inject style into parent <head> — bypasses Emotion CSS-in-JS scoping
+    if (!doc.getElementById('aion-sidebar-fix')) {
+      const s = doc.createElement('style');
+      s.id = 'aion-sidebar-fix';
+      s.textContent = mob ? `
+        [data-testid="collapsedControl"] {
+          display:flex!important;visibility:visible!important;pointer-events:auto!important;
+          position:relative!important;min-width:2.5rem!important;min-height:2.5rem!important;
+          align-items:center!important;justify-content:center!important;
+          background:transparent!important;padding:0!important;border:none!important;
         }
+        [data-testid="collapsedControl"] .material-symbols-rounded,
+        [data-testid="collapsedControl"] .material-icons-rounded,
+        [data-testid="collapsedControl"] span {
+          font-size:0!important;opacity:0!important;width:0!important;
+          overflow:hidden!important;display:block!important;
+        }
+        [data-testid="stSidebarCollapseButton"] { display:none!important; }
+      ` : `
+        [data-testid="collapsedControl"],
+        [data-testid="stSidebarCollapseButton"] { display:none!important; }
+      `;
+      doc.head.appendChild(s);
     }
-    fix(window.parent.document);
-    new MutationObserver(() => fix(window.parent.document))
-        .observe(window.parent.document.body, {childList:true, subtree:true});
+
+    function fixBtn() {
+      if (!mob) return;
+      doc.querySelectorAll('[data-testid="collapsedControl"]').forEach(btn => {
+        // Find the material icon span and replace its text
+        const span = btn.querySelector('.material-symbols-rounded, .material-icons-rounded, span');
+        if (span && span.textContent.trim() !== '☰') {
+          span.textContent = '☰';
+          span.className = '';
+          span.style.cssText = 'font-size:1.3rem!important;color:#8b949e!important;font-family:-apple-system,sans-serif!important;opacity:1!important;width:auto!important;overflow:visible!important;';
+        }
+        btn.style.cssText = 'display:flex!important;visibility:visible!important;pointer-events:auto!important;min-width:2.5rem!important;min-height:2.5rem!important;align-items:center!important;justify-content:center!important;background:transparent!important;border:none!important;';
+      });
+    }
+
+    fixBtn();
+    new MutationObserver(fixBtn).observe(doc.body, {childList:true, subtree:true});
+  } catch(e) { console.warn('aion-fix:', e); }
 })();
 </script>
 """, height=0)
