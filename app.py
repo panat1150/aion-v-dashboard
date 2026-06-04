@@ -1032,20 +1032,26 @@ components.html("""
 (function() {
     const isMobile = window.parent.innerWidth <= 768;
     function fix(doc) {
-        // On mobile: only hide the in-sidebar collapse button, keep expand button so user can open sidebar
-        // On desktop: hide both (sidebar always visible)
-        const sels = isMobile
-            ? ['[data-testid="stSidebarCollapseButton"]']
-            : ['[data-testid="collapsedControl"]', '[data-testid="stSidebarCollapseButton"]'];
-        sels.forEach(sel => {
-            doc.querySelectorAll(sel).forEach(el => {
-                el.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important';
+        if (isMobile) {
+            // Replace icon text with hamburger emoji directly
+            doc.querySelectorAll('[data-testid="collapsedControl"]').forEach(el => {
+                if (el.textContent.trim() !== '☰') {
+                    el.textContent = '☰';
+                    el.style.cssText = 'display:flex!important;visibility:visible!important;pointer-events:auto!important;font-size:1.3rem!important;color:#8b949e!important;background:transparent!important;border:none!important;cursor:pointer!important;padding:6px!important;';
+                }
             });
-        });
-        // Remove title attr so tooltip doesn't show raw icon name
-        doc.querySelectorAll('button[title*="arrow"], button[title*="keyboard"]').forEach(b => {
-            b.removeAttribute('title');
-        });
+            // Hide in-sidebar collapse button only
+            doc.querySelectorAll('[data-testid="stSidebarCollapseButton"]').forEach(el => {
+                el.style.cssText = 'display:none!important';
+            });
+        } else {
+            // Desktop: hide both buttons
+            ['[data-testid="collapsedControl"]','[data-testid="stSidebarCollapseButton"]'].forEach(sel => {
+                doc.querySelectorAll(sel).forEach(el => {
+                    el.style.cssText = 'display:none!important';
+                });
+            });
+        }
     }
     fix(window.parent.document);
     new MutationObserver(() => fix(window.parent.document))
