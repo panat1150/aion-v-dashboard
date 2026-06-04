@@ -927,12 +927,23 @@ button[aria-label*="collapse"] {
     visibility: hidden !important;
     pointer-events: none !important;
 }
-/* Mobile: show expand button so user can open sidebar */
+/* Mobile: show expand button, replace icon text with hamburger emoji */
 @media (max-width: 768px) {
     [data-testid="collapsedControl"] {
         display: flex !important;
         visibility: visible !important;
         pointer-events: auto !important;
+        font-size: 0 !important;
+        width: 2.2rem !important;
+        height: 2.2rem !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    [data-testid="collapsedControl"]::after {
+        content: '☰';
+        font-size: 1.2rem;
+        font-family: 'Inter', sans-serif !important;
+        color: #8b949e;
     }
 }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
