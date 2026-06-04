@@ -927,23 +927,50 @@ button[aria-label*="collapse"] {
     visibility: hidden !important;
     pointer-events: none !important;
 }
-/* Mobile: show expand button, replace icon text with hamburger emoji */
+/* Mobile: show expand button, clip inner span, inject ☰ via ::before */
 @media (max-width: 768px) {
     [data-testid="collapsedControl"] {
         display: flex !important;
         visibility: visible !important;
         pointer-events: auto !important;
-        font-size: 0 !important;
-        width: 2.2rem !important;
-        height: 2.2rem !important;
+        position: relative !important;
+        width: 2.5rem !important;
+        height: 2.5rem !important;
+        min-width: 2.5rem !important;
+        min-height: 2.5rem !important;
         align-items: center !important;
         justify-content: center !important;
+        background: transparent !important;
+        padding: 0 !important;
+        overflow: hidden !important;
     }
-    [data-testid="collapsedControl"]::after {
-        content: '☰';
-        font-size: 1.2rem;
-        font-family: 'Inter', sans-serif !important;
-        color: #8b949e;
+    /* clip all children (Material Icons span, svg, etc.) */
+    [data-testid="collapsedControl"] > *,
+    [data-testid="collapsedControl"] span,
+    [data-testid="collapsedControl"] svg {
+        position: absolute !important;
+        width: 1px !important;
+        height: 1px !important;
+        overflow: hidden !important;
+        clip: rect(0,0,0,0) !important;
+        white-space: nowrap !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    /* show hamburger */
+    [data-testid="collapsedControl"]::before {
+        content: '☰' !important;
+        font-size: 1.3rem !important;
+        color: #8b949e !important;
+        font-family: -apple-system, 'Inter', sans-serif !important;
+        display: block !important;
+        position: static !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        clip: auto !important;
+        opacity: 1 !important;
+        line-height: 1 !important;
     }
 }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
