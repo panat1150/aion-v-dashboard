@@ -919,17 +919,21 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 
+/* Desktop: hide both expand + collapse buttons (sidebar always open) */
 [data-testid="collapsedControl"],
 [data-testid="stSidebarCollapseButton"],
-[data-testid="stSidebarHeader"] button,
-button[title="keyboard_double_arrow_right"],
-button[title*="arrow"],
-button[aria-label*="sidebar"],
 button[aria-label*="collapse"] {
     display: none !important;
     visibility: hidden !important;
     pointer-events: none !important;
-    opacity: 0 !important;
+}
+/* Mobile: show expand button so user can open sidebar */
+@media (max-width: 768px) {
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
 }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
@@ -1015,25 +1019,21 @@ import streamlit.components.v1 as components
 components.html("""
 <script>
 (function() {
+    const isMobile = window.parent.innerWidth <= 768;
     function fix(doc) {
-        const sels = [
-            '[data-testid="collapsedControl"]',
-            '[data-testid="stSidebarCollapseButton"]',
-            '[data-testid="stSidebarHeader"] button',
-            'button[title*="arrow"]',
-            'button[aria-label*="sidebar"]',
-            'button[aria-label*="collapse"]',
-        ];
+        // On mobile: only hide the in-sidebar collapse button, keep expand button so user can open sidebar
+        // On desktop: hide both (sidebar always visible)
+        const sels = isMobile
+            ? ['[data-testid="stSidebarCollapseButton"]']
+            : ['[data-testid="collapsedControl"]', '[data-testid="stSidebarCollapseButton"]'];
         sels.forEach(sel => {
             doc.querySelectorAll(sel).forEach(el => {
-                el.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important';
+                el.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important';
             });
         });
-        // hide any button whose text content is the material icon string
-        doc.querySelectorAll('button').forEach(b => {
-            if (b.textContent.trim().toLowerCase().includes('arrow')) {
-                b.style.cssText = 'display:none!important;visibility:hidden!important';
-            }
+        // Remove title attr so tooltip doesn't show raw icon name
+        doc.querySelectorAll('button[title*="arrow"], button[title*="keyboard"]').forEach(b => {
+            b.removeAttribute('title');
         });
     }
     fix(window.parent.document);
