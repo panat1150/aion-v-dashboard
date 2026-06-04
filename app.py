@@ -917,15 +917,19 @@ check_password()
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+
 [data-testid="collapsedControl"],
+[data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarHeader"] button,
 button[title="keyboard_double_arrow_right"],
 button[title*="arrow"],
 button[aria-label*="sidebar"],
 button[aria-label*="collapse"] {
-    position: fixed !important;
-    left: -9999px !important;
-    pointer-events: none !important;
+    display: none !important;
     visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
 }
 html, body, [class*="css"], .stMarkdown, .stMetric label,
 .stMetric [data-testid="stMetricValue"], .stMetric [data-testid="stMetricDelta"],
@@ -1012,14 +1016,25 @@ components.html("""
 <script>
 (function() {
     function fix(doc) {
-        ['[data-testid="collapsedControl"]','[data-testid="stSidebarCollapseButton"]'].forEach(sel => {
+        const sels = [
+            '[data-testid="collapsedControl"]',
+            '[data-testid="stSidebarCollapseButton"]',
+            '[data-testid="stSidebarHeader"] button',
+            'button[title*="arrow"]',
+            'button[aria-label*="sidebar"]',
+            'button[aria-label*="collapse"]',
+        ];
+        sels.forEach(sel => {
             doc.querySelectorAll(sel).forEach(el => {
-                el.style.cssText = 'display:none!important;pointer-events:none!important';
-                el.removeAttribute('title');
+                el.style.cssText = 'display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important';
             });
         });
-        const sb = doc.querySelector('section[data-testid="stSidebar"]');
-        if (sb) sb.querySelectorAll('button').forEach(b => b.removeAttribute('title'));
+        // hide any button whose text content is the material icon string
+        doc.querySelectorAll('button').forEach(b => {
+            if (b.textContent.trim().toLowerCase().includes('arrow')) {
+                b.style.cssText = 'display:none!important;visibility:hidden!important';
+            }
+        });
     }
     fix(window.parent.document);
     new MutationObserver(() => fix(window.parent.document))
